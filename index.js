@@ -97,7 +97,7 @@ async function ProcessPages(URLs, Depth)
             }
 
             catch (Error) {
-                console.error("Error processing HTML: ", Error);
+                console.error("Error processing URL: ", Error);
             }
         }
     }
