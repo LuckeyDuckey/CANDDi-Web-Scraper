@@ -1,0 +1,32 @@
+{
+  "name": "knwl.js",
+  "description": "Parse through text for specific information.",
+  "version": "1.0.2",
+  "keywords": [
+    "data",
+    "tagging",
+    "parsing",
+    "language"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/loadfive/Knwl.js.git"
+  },
+  "main": "knwl.js",
+  "author": {
+    "name": "loadfive",
+    "email": "contact@loadfive.com"
+  },
+  "engines": {
+    "node": "*"
+  },
+  "devDependencies": {
+    "browserify": "^10.2.3",
+    "jasmine-node": "^1.14.5",
+    "uglifyjs": "^2.4.10"
+  },
+  "scripts": {
+    "build": "scripts/build.sh",
+    "test": "scripts/test.sh"
+  }
+}
