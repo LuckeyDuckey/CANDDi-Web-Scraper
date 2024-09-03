@@ -59,11 +59,19 @@ function ExtractInteralLinkFromHtml(HTML, BaseURL)
 
         let NewURL = $(Element).attr("href");
 
-        if (NewURL && NewURL.startsWith("/"))
+        if (NewURL)
         {
-            // Convert relative URL to absolute URL
-            NewURL = new URL(NewURL, BaseURL).href;
-            URLs.push(NewURL);
+            if (NewURL.startsWith("/"))
+            {
+                // Convert relative URL to absolute URL
+                NewURL = new URL(NewURL, BaseURL).href;
+                URLs.push(NewURL);
+            }
+
+            else if (NewURL.startsWith(BaseURL))
+            {
+                URLs.push(NewURL);
+            }
         }
     });
 
@@ -120,8 +128,12 @@ const ReadLineInterface = ReadLine.createInterface({
 ReadLineInterface.question("Email >>> ", async (Input) => {
 
     const CompanyDomain = Input.split("@")[1];
-    await ProcessPages([`https://www.${CompanyDomain}`], 0);
+    await ProcessPages([`https://${CompanyDomain}`], 0);
     LogResults();
     ReadLineInterface.close();
 
 });
+
+// Need to verify web address https/www/http
+// Need to have better filtering for addresses and such
+// Need to account for dynamic websites
