@@ -46,11 +46,50 @@ function GetHTMLFromURL(URL)
     });
 }
 
+// Custom UK phone number filtering function
+function ExtractPhoneNumbers(text)
+{
+    const PhoneRegex = /(?<!\d)(0|\+44|44)[\s\-()]*(\d[\s\-()]*){10}(?!\d)/g;
+    const Matches = text.match(PhoneRegex);
+
+    /*
+    Explanation for PhoneRegex:
+    -> "(?<!\d)": Ensures the match is not preceded by a digit
+    -> "(0|\+44|44)?": Matches the UK dialing code (0, +44, or 44)
+    -> "[\s\-()]*": Matches any number of spaces, hyphens, or parentheses
+    -> "(\d[\s\-()]*){10}": Matches exactly 10 digits, allowing for optional separators
+    -> "(?!\d)": Ensures the match is not followed by additional digits
+    -> "g": Global flag to match all occurrences in the input string
+    */
+
+    let PhoneNumbers = [];
+
+    // Format numbers like so "+44 xxxx xxxxxx" and "0xxxx xxxxxx"
+    if (Matches && Array.isArray(Matches))
+    {
+        Matches.forEach((Match) => {
+            let CleanNumber = Match.replace(/[\s\-\(\)\+]/g, "");
+            let SpaceIndex = CleanNumber.length - 5;
+
+            if (CleanNumber.startsWith("44"))
+            {
+                PhoneNumbers.push(`+${CleanNumber.slice(0, 2)} ${CleanNumber.slice(2, SpaceIndex)} ${CleanNumber.slice(SpaceIndex)}`);
+            } else
+            {
+                PhoneNumbers.push(`${CleanNumber.slice(0, SpaceIndex)} ${CleanNumber.slice(SpaceIndex)}`);
+            }
+        });
+    }
+
+    return PhoneNumbers;
+}
+
 function ExtractInformationFromHTML(HTML)
 {
     // Extract emails, phone numbers and addresses using Knwl.js
     const KnwlInstance = new Knwl("english");
     KnwlInstance.init(HTML);
+    const HTMLText = KnwlInstance.words.get("words").join(" ");
 
     const ExtractedEmails = KnwlInstance.get("emails");
     ExtractedEmails.forEach((Email) => {
@@ -58,9 +97,9 @@ function ExtractInformationFromHTML(HTML)
         { AppendToArray(Email.address, Emails); }
     });
 
-    const ExtractedPhones = KnwlInstance.get("phones");
+    const ExtractedPhones = ExtractPhoneNumbers(HTMLText);
     ExtractedPhones.forEach((Number) => {
-        AppendToArray(Number.phone, PhoneNumbers);
+        AppendToArray(Number, PhoneNumbers);
     });
 
     const ExtractedAddresses = KnwlInstance.get("places");
@@ -107,6 +146,11 @@ async function ProcessPages(URLs, Depth)
         {
             AppendToArray(URLs[i], ExploredPages);
 
+            // Show progress through site
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+            process.stdout.write(`Processed *${ExploredPages.length}* Pages`);
+
             // Throttle requests with a delay (0.5 - 1.5 secs) to avoid being blocked
             Delay(Math.floor(Math.random() * 100 + 50));
 
@@ -136,6 +180,8 @@ async function ProcessPages(URLs, Depth)
 
 function LogResults()
 {
+    process.stdout.clearLine(0);
+
     console.log("\nEmails:", Emails);
     console.log("\nPhone Numbers:", PhoneNumbers);
     console.log("\nAddresses:", Addresses);
