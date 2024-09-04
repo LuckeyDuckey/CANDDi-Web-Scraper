@@ -54,7 +54,8 @@ function ExtractInformationFromHTML(HTML)
 
     const ExtractedEmails = KnwlInstance.get("emails");
     ExtractedEmails.forEach((Email) => {
-        if (Email.address.split("@")[1] === CompanyDomain) { AppendToArray(Email.address, Emails); }
+        if (Email.address.toLowerCase().split("@")[1].split(".")[0] === CompanyDomain.split(".")[0])
+        { AppendToArray(Email.address, Emails); }
     });
 
     const ExtractedPhones = KnwlInstance.get("phones");
