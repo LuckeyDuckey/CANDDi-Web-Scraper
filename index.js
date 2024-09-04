@@ -76,7 +76,7 @@ function ExtractPhoneNumbers(text)
                 PhoneNumbers.push(`+${CleanNumber.slice(0, 2)} ${CleanNumber.slice(2, SpaceIndex)} ${CleanNumber.slice(SpaceIndex)}`);
             } else
             {
-                PhoneNumbers.push(`${CleanNumber.slice(0, SpaceIndex)} ${CleanNumber.slice(SpaceIndex)}`);
+                PhoneNumbers.push(`+44 ${CleanNumber.slice(1, SpaceIndex)} ${CleanNumber.slice(SpaceIndex)}`);
             }
         });
     }
