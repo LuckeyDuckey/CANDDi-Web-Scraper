@@ -31,6 +31,13 @@ function GetHTMLFromURL(URL)
     return new Promise((Resolve, Reject) => {
         https.get(URL, Header, (Response) => {
 
+            // Check if content grabbed is HTML
+            if (!Response.headers['content-type'].includes('text/html'))
+            {
+                Resolve(null);
+                return;
+            }
+
             let HTML = "";
             Response.on("data", (DataChunk) => { HTML += DataChunk; });
             Response.on("end", () => { Resolve(HTML); });
@@ -46,13 +53,19 @@ function ExtractInformationFromHTML(HTML)
     KnwlInstance.init(HTML);
 
     const ExtractedEmails = KnwlInstance.get("emails");
-    ExtractedEmails.forEach((Email) => { AppendToArray(Email.address, Emails); });
+    ExtractedEmails.forEach((Email) => {
+        if (Email.address.split("@")[1] === CompanyDomain) { AppendToArray(Email.address, Emails); }
+    });
 
     const ExtractedPhones = KnwlInstance.get("phones");
-    ExtractedPhones.forEach((Number) => { AppendToArray(Number.phone, PhoneNumbers); });
+    ExtractedPhones.forEach((Number) => {
+        AppendToArray(Number.phone, PhoneNumbers);
+    });
 
     const ExtractedAddresses = KnwlInstance.get("places");
-    ExtractedAddresses.forEach((Address) => { AppendToArray(Address.place, Addresses); });
+    ExtractedAddresses.forEach((Address) => {
+        AppendToArray(Address.place, Addresses);
+    });
 }
 
 function ExtractInteralLinkFromHtml(HTML, BaseURL)
@@ -74,7 +87,7 @@ function ExtractInteralLinkFromHtml(HTML, BaseURL)
                 URLs.push(NewURL);
             }
 
-            else if (NewURL.startsWith(BaseURL))
+            else if (NewURL.startsWith(BaseURL.split("/").slice(0, 3).join("/")))
             {
                 URLs.push(NewURL);
             }
@@ -94,19 +107,22 @@ async function ProcessPages(URLs, Depth)
             AppendToArray(URLs[i], ExploredPages);
 
             // Throttle requests with a delay (0.5 - 1.5 secs) to avoid being blocked
-            Delay(Math.floor(Math.random() * 1000 + 500));
+            Delay(Math.floor(Math.random() * 100 + 50));
 
             try
             {
                 const HTML = await GetHTMLFromURL(URLs[i]);
 
-                ExtractInformationFromHTML(HTML);
-
-                // Process other pages on the site while limiting how deep it can explore
-                if (Depth < 5)
+                if (HTML)
                 {
-                    const NewURLs = ExtractInteralLinkFromHtml(HTML, URLs[i]);
-                    await ProcessPages(NewURLs, Depth + 1);
+                    ExtractInformationFromHTML(HTML);
+
+                    // Process other pages on the site while limiting how deep it can explore
+                    if (Depth < 50)
+                    {
+                        const NewURLs = ExtractInteralLinkFromHtml(HTML, URLs[i]);
+                        await ProcessPages(NewURLs, Depth + 1);
+                    }
                 }
             }
 
@@ -133,7 +149,7 @@ const ReadLineInterface = ReadLine.createInterface({
 // Get email from user and process the sites home page
 ReadLineInterface.question("Email >>> ", async (Input) => {
 
-    const CompanyDomain = Input.split("@")[1];
+    CompanyDomain = Input.split("@")[1].toLowerCase();
     await ProcessPages([`https://www.${CompanyDomain}`], 0);
     LogResults();
     ReadLineInterface.close();
