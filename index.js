@@ -22,8 +22,14 @@ function AppendToArray(Item, Array)
 // Function to fetch raw HTML as string from URL
 function GetHTMLFromURL(URL)
 {
+    const Header = {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+    };
+
     return new Promise((Resolve, Reject) => {
-        https.get(URL, (Response) => {
+        https.get(URL, Header, (Response) => {
 
             let HTML = "";
             Response.on("data", (DataChunk) => { HTML += DataChunk; });
@@ -128,12 +134,8 @@ const ReadLineInterface = ReadLine.createInterface({
 ReadLineInterface.question("Email >>> ", async (Input) => {
 
     const CompanyDomain = Input.split("@")[1];
-    await ProcessPages([`https://${CompanyDomain}`], 0);
+    await ProcessPages([`https://www.${CompanyDomain}`], 0);
     LogResults();
     ReadLineInterface.close();
 
 });
-
-// Need to verify web address https/www/http
-// Need to have better filtering for addresses and such
-// Need to account for dynamic websites
