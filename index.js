@@ -51,10 +51,10 @@ function GetHTMLFromURL(URL)
 }
 
 // Custom UK phone number filtering function
-function ExtractPhoneNumbers(text)
+function ExtractPhoneNumbers(HTML)
 {
     const PhoneRegex = /(?<!\d)(0|\+44|44)[\s\-()]*(\d[\s\-()]*){10}(?!\d)/g;
-    const Matches = text.match(PhoneRegex);
+    const Matches = HTML.match(PhoneRegex);
 
     /*
     Explanation for PhoneRegex:
@@ -88,6 +88,20 @@ function ExtractPhoneNumbers(text)
     return PhoneNumbers;
 }
 
+// Custom UK addresses filtering function
+function ExtractAddresses(HTML)
+{
+    // Get rid of all html tags
+    const HTMLClean = HTML.replace(/<[^>]*>/g, ' ');
+
+    // I will not be explaining this regex it was a nightmare to come up much less explain :)
+    const AddressRegex = /(?<![\w\-])\d{1,4}[.\s\-]([\w\-]+){1,2}[.\s\-](?:Acre|Alley|Approach|Arcade|Arch|Avenue|Bank|Boulevard|Bow|Bridge|Broadway|Brook|Brow|Bypass|Chase|Circus|Close|Court|Corner|Crescent|Cross|Croft|Dale|Dene|Drive|Drove|End|Field|Fold|Gardens|Gate|Ginnel|Grange|Green|Grove|Heights|Hill|Lane|Lea|Leasow|Leasowe|Market|Mead|Meadow|Mews|Mile|Mount|Nook|Parade|Pasture|Pass|Passage|Path|Park|Place|Plaza|Reach|Rise|Road|Row|Score|Side|Street|Square|Terrace|Twitten|Vale|Valley|View|Quay|Walk|Way|Yard|St|Rd|Ave|Ln|Dr|Cl|Cres|Ct|Sq|Pl|Ter|Wy)[,.\s\-]{1,3}([\w\-]+[,.\s\-]{1,3}){1,3}?[A-Z]{1,2}\d{1,2}[A-Z]?[.\s\-]?\d[A-Z]{2}(?![\w\-])/gi;
+
+    const Addresses = HTMLClean.match(AddressRegex);
+
+    return Addresses ? Addresses: [];
+}
+
 function ExtractInformationFromHTML(HTML)
 {
     // Extract emails, phone numbers and addresses using Knwl.js
@@ -105,9 +119,9 @@ function ExtractInformationFromHTML(HTML)
         AppendToArray(Number, PhoneNumbers);
     });
 
-    const ExtractedAddresses = KnwlInstance.get("places");
+    const ExtractedAddresses = ExtractAddresses(HTML);
     ExtractedAddresses.forEach((Address) => {
-        AppendToArray(Address.place, Addresses);
+        AppendToArray(Address, Addresses);
     });
 }
 
