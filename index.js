@@ -182,47 +182,51 @@ async function ProcessPages(URLs, Depth)
     }
 }
 
-// Check subdomain by resolving with and without "www" while checking for errors
-function GetSubDomain(Callback)
+// Function to handle redirects and find the proper website URL
+function GetURL(URL, RedirectCount = 0)
 {
-    dns.resolve(CompanyDomain, (NoSubDomErr) => {
+    return new Promise((Resolve, Reject) => {
 
-        if (NoSubDomErr)
-        {
-            // Try to resolve with "www" subdomain if no subdomain fails
-            dns.resolve(`www.${CompanyDomain}`, (WWWSubDomErr) => {
-
-                if (WWWSubDomErr) { Callback(null); }
-                else { Callback(`www.${CompanyDomain}`); }
-            });
+        // Limit the number of redirects to avoid infinite loops
+        if (RedirectCount > 5) {
+            console.log('Too many redirects');
+            return Resolve(null);
         }
-        else
-        {
-            Callback(CompanyDomain); // Has no sub domain
-        }
-    });
-}
 
-// Gets the protocol by checking if port 443 (used for https) is open
-function CheckHttpsAvailable(FullDomain, Callback)
-{
-    const Socket = new net.Socket();
-    Socket.setTimeout(3000);
+        const Protocol = URL.startsWith("https") ? https : http;
 
-    // Attempt to connect to the port 443
-    Socket.connect(443, FullDomain, () => {
-        Socket.end();
-        Callback(`https://${FullDomain}`); // Can use https
-    });
+        const Headers = {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        };
 
-    Socket.on("error", () => {
-        Socket.end();
-        Callback(`http://${FullDomain}`); // Cannot use https
-    });
+        Protocol.get(URL, Headers, (Response) => {
 
-    Socket.on("timeout", () => {
-        Socket.end();
-        Callback(`http://${FullDomain}`); // Cannot use https
+            // If we get a 3xx response follow the redirect
+            if (Response.statusCode >= 300 && Response.statusCode < 400 && Response.headers.location)
+            {
+                const RedirectUrl = Response.headers.location;
+                Resolve(GetURL(RedirectUrl, RedirectCount + 1));
+            }
+
+            // If successful return the final URL
+            else if (Response.statusCode >= 200 && Response.statusCode < 300)
+            {
+                Resolve(URL);
+            }
+
+            // If status code not in range 200 - 300 consider it an error
+            else
+            {
+                console.error(`Failed to fetch page. Status code: ${Response.statusCode}`);
+                Resolve(null);
+            }
+
+        }).on('error', (error) => {
+            console.error(`Problem with request: ${error.message}`);
+            Resolve(null);
+        });
     });
 }
 
@@ -246,22 +250,14 @@ ReadLineInterface.question("Email >>> ", (Input) => {
 
     CompanyDomain = Input.split("@")[1].toLowerCase();
 
-    GetSubDomain((FullDomain) => {
-
-        if (FullDomain)
+    GetURL(`https://www.${CompanyDomain}`).then(async FinalURL => {
+        if (FinalURL)
         {
-            CheckHttpsAvailable(FullDomain, async (FullURL) => {
-
-                await ProcessPages([FullURL], 0);
-                LogResults();
-                process.exit(0);
-            });
+            await ProcessPages([FinalURL], 0);
+            LogResults();
+            process.exit(0);
         }
-        else
-        {
-            console.log(`Failed to resolve domain: ${CompanyDomain}`);
-        }
-    });
+    })
 
     ReadLineInterface.close();
 
