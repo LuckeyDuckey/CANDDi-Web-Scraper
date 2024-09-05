@@ -1,7 +1,11 @@
 const ReadLine = require("readline");
-const https = require("https");
 const Cheerio = require("cheerio");
 const Knwl = require("knwl.js");
+
+const https = require("https");
+const http = require("http");
+const dns = require("dns");
+const net = require("net");
 
 let Emails = [];
 let PhoneNumbers = [];
@@ -22,6 +26,8 @@ function AppendToArray(Item, Array)
 // Function to fetch raw HTML as string from URL
 function GetHTMLFromURL(URL)
 {
+    const Protocol = URL.startsWith("https") ? https : http;
+
     const Header = {
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -29,7 +35,7 @@ function GetHTMLFromURL(URL)
     };
 
     return new Promise((Resolve, Reject) => {
-        https.get(URL, Header, (Response) => {
+        Protocol.get(URL, Header, (Response) => {
 
             // Check if content grabbed is HTML
             if (!Response.headers['content-type'].includes('text/html'))
@@ -93,7 +99,7 @@ function ExtractInformationFromHTML(HTML)
 
     const ExtractedEmails = KnwlInstance.get("emails");
     ExtractedEmails.forEach((Email) => {
-        if (Email.address.toLowerCase().split("@")[1].split(".")[0] === CompanyDomain.split(".")[0])
+        if (Email.address.toLowerCase().includes(CompanyDomain.split(".")[0]))
         { AppendToArray(Email.address, Emails); }
     });
 
@@ -126,7 +132,6 @@ function ExtractInteralLinkFromHtml(HTML, BaseURL)
                 NewURL = new URL(NewURL, BaseURL).href;
                 URLs.push(NewURL);
             }
-
             else if (NewURL.startsWith(BaseURL.split("/").slice(0, 3).join("/")))
             {
                 URLs.push(NewURL);
@@ -151,8 +156,8 @@ async function ProcessPages(URLs, Depth)
             process.stdout.cursorTo(0);
             process.stdout.write(`Processed *${ExploredPages.length}* Pages`);
 
-            // Throttle requests with a delay (0.5 - 1.5 secs) to avoid being blocked
-            Delay(Math.floor(Math.random() * 100 + 50));
+            // Throttle requests with a delay to avoid being blocked
+            await Delay(Math.floor(Math.random() * 100 + 50));
 
             try
             {
@@ -170,12 +175,55 @@ async function ProcessPages(URLs, Depth)
                     }
                 }
             }
-
             catch (Error) {
                 console.error("Error processing URL: ", Error);
             }
         }
     }
+}
+
+// Check subdomain by resolving with and without "www" while checking for errors
+function GetSubDomain(Callback)
+{
+    dns.resolve(CompanyDomain, (NoSubDomErr) => {
+
+        if (NoSubDomErr)
+        {
+            // Try to resolve with "www" subdomain if no subdomain fails
+            dns.resolve(`www.${CompanyDomain}`, (WWWSubDomErr) => {
+
+                if (WWWSubDomErr) { Callback(null); }
+                else { Callback(`www.${CompanyDomain}`); }
+            });
+        }
+        else
+        {
+            Callback(CompanyDomain); // Has no sub domain
+        }
+    });
+}
+
+// Gets the protocol by checking if port 443 (used for https) is open
+function CheckHttpsAvailable(FullDomain, Callback)
+{
+    const Socket = new net.Socket();
+    Socket.setTimeout(3000);
+
+    // Attempt to connect to the port 443
+    Socket.connect(443, FullDomain, () => {
+        Socket.end();
+        Callback(`https://${FullDomain}`); // Can use https
+    });
+
+    Socket.on("error", () => {
+        Socket.end();
+        Callback(`http://${FullDomain}`); // Cannot use https
+    });
+
+    Socket.on("timeout", () => {
+        Socket.end();
+        Callback(`http://${FullDomain}`); // Cannot use https
+    });
 }
 
 function LogResults()
@@ -194,11 +242,27 @@ const ReadLineInterface = ReadLine.createInterface({
 });
 
 // Get email from user and process the sites home page
-ReadLineInterface.question("Email >>> ", async (Input) => {
+ReadLineInterface.question("Email >>> ", (Input) => {
 
     CompanyDomain = Input.split("@")[1].toLowerCase();
-    await ProcessPages([`https://www.${CompanyDomain}`], 0);
-    LogResults();
+
+    GetSubDomain((FullDomain) => {
+
+        if (FullDomain)
+        {
+            CheckHttpsAvailable(FullDomain, async (FullURL) => {
+
+                await ProcessPages([FullURL], 0);
+                LogResults();
+                process.exit(0);
+            });
+        }
+        else
+        {
+            console.log(`Failed to resolve domain: ${CompanyDomain}`);
+        }
+    });
+
     ReadLineInterface.close();
 
 });
