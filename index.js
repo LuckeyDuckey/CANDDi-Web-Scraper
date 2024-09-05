@@ -4,8 +4,6 @@ const Knwl = require("knwl.js");
 
 const https = require("https");
 const http = require("http");
-const dns = require("dns");
-const net = require("net");
 
 let Emails = [];
 let PhoneNumbers = [];
@@ -95,7 +93,6 @@ function ExtractInformationFromHTML(HTML)
     // Extract emails, phone numbers and addresses using Knwl.js
     const KnwlInstance = new Knwl("english");
     KnwlInstance.init(HTML);
-    const HTMLText = KnwlInstance.words.get("words").join(" ");
 
     const ExtractedEmails = KnwlInstance.get("emails");
     ExtractedEmails.forEach((Email) => {
@@ -103,7 +100,7 @@ function ExtractInformationFromHTML(HTML)
         { AppendToArray(Email.address, Emails); }
     });
 
-    const ExtractedPhones = ExtractPhoneNumbers(HTMLText);
+    const ExtractedPhones = ExtractPhoneNumbers(HTML);
     ExtractedPhones.forEach((Number) => {
         AppendToArray(Number, PhoneNumbers);
     });
@@ -157,7 +154,7 @@ async function ProcessPages(URLs, Depth)
             process.stdout.write(`Processed *${ExploredPages.length}* Pages`);
 
             // Throttle requests with a delay to avoid being blocked
-            await Delay(Math.floor(Math.random() * 100 + 50));
+            // await Delay(Math.floor(Math.random() * 100 + 50));
 
             try
             {
